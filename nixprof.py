@@ -5,6 +5,8 @@ import heapq
 import re
 import subprocess
 import json
+import shutil
+import sys
 from typing import List, TextIO, Union
 import networkx
 import click
@@ -69,7 +71,9 @@ def nixprof():
 @click.argument("cmd", nargs=-1, type=click.UNPROCESSED)
 def record(cmd, out):
     """Record timings of a `nix-build`/`nix build` invocation."""
-    subprocess.run(f"\\time {' '.join(cmd)} --log-format internal-json 2>&1 | ts -s -m \"[%.s]\" > {out}", shell=True, check=True)
+    result = subprocess.run(f"set -o pipefail; \\time {' '.join(cmd)} --log-format internal-json 2>&1 | ts -s -m \"[%.s]\" > {out}", shell=True, executable=shutil.which("bash"))
+    if result.returncode != 0:
+        sys.exit(result.returncode)
 
 DOTFILE = "nixprof.dot"
 CHROMEFILE = "nixprof.trace_event"
