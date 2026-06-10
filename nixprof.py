@@ -110,10 +110,10 @@ def report(input: TextIO, tred, print_crit_path, print_avg_crit, print_sim_times
     g, id_to_drv = parse(input)
 
     drv_data = json.loads(subprocess.run(["nix", "--extra-experimental-features", "nix-command", "path-info", "--json", "--derivation"] + list(g), capture_output=True, check=True).stdout)
-    for d in drv_data:
-        for dep in d["references"]:
+    for path, info in drv_data.items():
+        for dep in info["references"]:
             if dep in g:
-                g.add_edge(d["path"], dep)
+                g.add_edge(path, dep)
 
     if tred:
         g2: networkx.DiGraph = networkx.transitive_reduction(g)
