@@ -108,9 +108,11 @@ def parse(input):
 def report(inputs, tred, print_crit_path, print_avg_crit, print_sim_times, save_dot, save_chrome_trace, all, merge_into_pred, merge_into_succ, filter):
     """Report various metrics of recorded log(s)."""
     g = networkx.DiGraph(rankdir="BT")
+    input_nodes = []
     for path in inputs:
         with open(path) as f:
             gi, _ = parse(f)
+        input_nodes.append(set(gi.nodes()))
         for node, data in gi.nodes(data=True):
             if node not in g:
                 g.add_node(node, **data)
@@ -121,6 +123,12 @@ def report(inputs, tred, print_crit_path, print_avg_crit, print_sim_times, save_
         for dep in info["references"]:
             if dep in g:
                 g.add_edge(path, dep)
+
+    root_nodes = set()
+    for nodes in input_nodes:
+        for node in nodes:
+            if not any(pred in nodes for pred in g.predecessors(node)):
+                root_nodes.add(node)
 
     if tred:
         g2: networkx.DiGraph = networkx.transitive_reduction(g)
@@ -226,6 +234,13 @@ def report(inputs, tred, print_crit_path, print_avg_crit, print_sim_times, save_
 
         for drv in crit_path:
             g.nodes[drv]["color"] = "red"
+
+        for drv in root_nodes:
+            g.nodes[drv]["peripheries"] = 2
+
+        for u, v in g.edges:
+            g[u][v]["headport"] = "n"
+            g[u][v]["tailport"] = "s"
 
         for i in range(len(crit_path) - 1):
             g[crit_path[i+1]][crit_path[i]]["color"] = "red"
