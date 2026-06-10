@@ -94,7 +94,7 @@ def parse(input):
     return (g, id_to_drv)
 
 @nixprof.command()
-@click.option("-i", "--in", "input", default="nixprof.log", help="log input filename", type=click.File('r'))
+@click.option("-i", "--in", "inputs", default=("nixprof.log",), multiple=True, help="log input filename(s)")
 @click.option("-t", "--tred", help="remove transitive edges (can speed up and declutter dot graph display)", is_flag=True)
 @click.option("-p", "--print-crit-path", help="print critical (longest) path", is_flag=True)
 @click.option("-a", "--print-avg-crit", help="print average contribution to critical paths", is_flag=True)
@@ -105,9 +105,16 @@ def parse(input):
 @click.option("--merge-into-pred", help="for each derivation with exactly one predecessor (dependency) and whose name matches the given regex, merge build time and dependents into that predecessor")
 @click.option("--merge-into-succ", help="for each derivation with exactly one successor (dependent) and whose name matches the given regex, merge build time and dependencies into that successor")
 @click.option("--filter")
-def report(input: TextIO, tred, print_crit_path, print_avg_crit, print_sim_times, save_dot, save_chrome_trace, all, merge_into_pred, merge_into_succ, filter):
-    """Report various metrics of a recorded log."""
-    g, id_to_drv = parse(input)
+def report(inputs, tred, print_crit_path, print_avg_crit, print_sim_times, save_dot, save_chrome_trace, all, merge_into_pred, merge_into_succ, filter):
+    """Report various metrics of recorded log(s)."""
+    g = networkx.DiGraph(rankdir="BT")
+    for path in inputs:
+        with open(path) as f:
+            gi, _ = parse(f)
+        for node, data in gi.nodes(data=True):
+            if node not in g:
+                g.add_node(node, **data)
+        g.add_edges_from(gi.edges())
 
     drv_data = json.loads(subprocess.run(["nix", "--extra-experimental-features", "nix-command", "path-info", "--json", "--derivation"] + list(g), capture_output=True, check=True).stdout)
     for path, info in drv_data.items():
